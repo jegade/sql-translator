@@ -14,8 +14,8 @@ SQL::Translator::Producer::PostgreSQL - PostgreSQL producer for SQL::Translator
 Creates a DDL suitable for PostgreSQL.  Very heavily based on the Oracle
 producer.
 
-Now handles PostGIS Geometry and Geography data types on table definitions.
-Does not yet support PostGIS Views.
+#Now handles PostGIS Geometry and Geography data types on table definitions.
+#Does not yet support PostGIS Views.
 
 =cut
 
@@ -55,42 +55,43 @@ BEGIN {
     #
     # MySQL types
     #
-    double     => 'double precision',
-    decimal    => 'numeric',
+    double     => 'double',
+    decimal    => 'float',
     int        => 'integer',
     mediumint  => 'integer',
-    tinyint    => 'smallint',
-    char       => 'character',
-    varchar    => 'character varying',
-    longtext   => 'text',
-    mediumtext => 'text',
-    tinytext   => 'text',
-    tinyblob   => 'bytea',
-    blob       => 'bytea',
-    mediumblob => 'bytea',
-    longblob   => 'bytea',
-    enum       => 'character varying',
-    set        => 'character varying',
+    tinyint    => 'short',
+    bigint     => 'integer',
+    char       => 'string',
+    varchar    => 'string',
+    longtext   => 'string',
+    mediumtext => 'string',
+    tinytext   => 'string',
+    tinyblob   => 'string',
+    blob       => 'string',
+    mediumblob => 'string',
+    longblob   => 'string',
+    enum       => 'string',
+    set        => 'string',
     datetime   => 'timestamp',
-    year       => 'date',
-
+    year       => 'timestamp',
+    text       => "string",
     #
     # Oracle types
     #
     number     => 'integer',
-    varchar2   => 'character varying',
-    long       => 'text',
-    clob       => 'text',
+    varchar2   => 'string',
+    long       => 'string',
+    clob       => 'string',
 
     #
     # Sybase types
     #
-    comment    => 'text',
+    comment    => 'string',
 
     #
     # MS Access types
     #
-    memo       => 'text',
+    memo       => 'string',
 );
 }
 my %truncated;
@@ -286,31 +287,31 @@ sub create_table
             generator => $generator,
             postgres_version => $postgres_version,
             type_defs => $type_defs,
-            constraint_defs => \@constraint_defs,
+            #constraint_defs => \@constraint_defs,
         });
     }
 
     #
     # Index Declarations
     #
-    for my $index ( $table->get_indices ) {
-        my ($idef, $constraints) = create_index($index, {
-            generator => $generator,
-        });
-        $idef and push @index_defs, $idef;
-        push @constraint_defs, @$constraints;
-    }
+    #for my $index ( $table->get_indices ) {
+    #    my ($idef, $constraints) = create_index($index, {
+    #        generator => $generator,
+    #    });
+    #    $idef and push @index_defs, $idef;
+    #    push @constraint_defs, @$constraints;
+    #}
 
     #
     # Table constraints
     #
-    for my $c ( $table->get_constraints ) {
-        my ($cdefs, $fks) = create_constraint($c, {
-            generator => $generator,
-        });
-        push @constraint_defs, @$cdefs;
-        push @fks, @$fks;
-    }
+    #for my $c ( $table->get_constraints ) {
+    #    my ($cdefs, $fks) = create_constraint($c, {
+    #        generator => $generator,
+    #    });
+    #    push @constraint_defs, @$cdefs;
+    #    push @fks, @$fks;
+    #}
 
 
     my $create_statement = join("\n", @comments);
@@ -431,15 +432,15 @@ sub create_view {
         #
         # Default value
         #
-        __PACKAGE__->_apply_default_value(
-          $field,
-          \$field_def,
-          [
-            'NULL'              => \'NULL',
-            'now()'             => 'now()',
-            'CURRENT_TIMESTAMP' => 'CURRENT_TIMESTAMP',
-          ],
-        );
+        #__PACKAGE__->_apply_default_value(
+        #  $field,
+        #  \$field_def,
+        #  [
+        #    'NULL'              => \'NULL',
+        #    'now()'             => 'now()',
+        #    'CURRENT_TIMESTAMP' => 'CURRENT_TIMESTAMP',
+        #  ],
+        #);
 
         #
         # Not null constraint
@@ -534,9 +535,9 @@ sub create_geometry_constraints {
             push @constraint_defs, "${def_start}UNIQUE " .$field_names;
         }
         elsif ( $type eq NORMAL ) {
-            $index_def =
-                'CREATE INDEX ' . $generator->quote($name) . ' on ' . $generator->quote($table_name) . ' ' .
-                join ' ', grep { defined } $index_using, $field_names, $index_where;
+            #$index_def =
+            #    'CREATE INDEX ' . $generator->quote($name) . ' on ' . $generator->quote($table_name) . ' ' .
+            #    join ' ', grep { defined } $index_using, $field_names, $index_where;
         }
         else {
             warn "Unknown index type ($type) on table $table_name.\n"
@@ -645,17 +646,17 @@ sub convert_datatype
 #        push @$constraint_defs,
 #        'CONSTRAINT "$chk_name" CHECK (' . $generator->quote(field_name) .
 #           qq[IN ($commalist))];
-        $data_type = 'character varying';
+        $data_type = 'string';
     }
     elsif ( $data_type eq 'set' ) {
-        $data_type = 'character varying';
+        $data_type = 'array(string)';
     }
     elsif ( $field->is_auto_increment ) {
         if ( (defined $size[0] && $size[0] > 11) or $data_type eq 'bigint' ) {
-            $data_type = 'bigserial';
+            #$data_type = 'bigserial';
         }
         else {
-            $data_type = 'serial';
+            #$data_type = 'serial';
         }
         undef @size;
     }
@@ -674,10 +675,10 @@ sub convert_datatype
     if ( $data_type eq 'integer' ) {
         if ( defined $size[0] && $size[0] > 0) {
             if ( $size[0] > 10 ) {
-                $data_type = 'bigint';
+                $data_type = 'integer';
             }
             elsif ( $size[0] < 5 ) {
-                $data_type = 'smallint';
+                $data_type = 'integer';
             }
             else {
                 $data_type = 'integer';
@@ -701,7 +702,7 @@ sub convert_datatype
         $data_type =~ s/^(time.*?)( with.*)?$/$1($size[0])/;
         $data_type .= $2 if(defined $2);
     } elsif ( defined $size[0] && $size[0] > 0 ) {
-        $data_type .= '(' . join( ',', @size ) . ')';
+        #$data_type .= '(' . join( ',', @size ) . ')';
     }
     if($array)
     {
@@ -816,7 +817,7 @@ sub alter_field
         add_geometry_constraints($to_field, $options),
         if is_geometry($to_field);
 
-    return wantarray ? @out : join(";\n", @out);
+    return wantarray ? @out : join(";\n", grep { $_ } @out);
 }
 
 sub rename_field { alter_field(@_) }
@@ -914,7 +915,7 @@ sub rename_table {
         add_geometry_column($_, { %{$options}, table => $new_table }),
     } grep { is_geometry($_) } $old_table->get_fields;
 
-    $options->{geometry_changes} = join (";\n",@geometry_changes) if @geometry_changes;
+    $options->{geometry_changes} = join (";\n", grep { $_ } @geometry_changes) if @geometry_changes;
 
     return alter_table($old_table, $options);
 }
